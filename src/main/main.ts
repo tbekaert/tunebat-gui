@@ -11,9 +11,11 @@
 import 'core-js/stable';
 import 'regenerator-runtime/runtime';
 import path from 'path';
-import { app, BrowserWindow, shell, ipcMain } from 'electron';
+import fsPromise from 'fs/promises';
+import { app, BrowserWindow, shell, ipcMain, dialog } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
+
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
 
@@ -26,6 +28,7 @@ export default class AppUpdater {
 }
 
 let mainWindow: BrowserWindow | null = null;
+let childWindow: BrowserWindow | null = null;
 
 ipcMain.on('ipc-example', async (event, arg) => {
   const msgTemplate = (pingPong: string) => `IPC test: ${pingPong}`;
@@ -77,7 +80,19 @@ const createWindow = async () => {
     height: 728,
     icon: getAssetPath('icon.png'),
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: true,
+      contextIsolation: false,
+    },
+  });
+
+  childWindow = new BrowserWindow({
+    show: false,
+    width: 1024,
+    height: 728,
+    icon: getAssetPath('icon.png'),
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
     },
   });
 
@@ -136,3 +151,36 @@ app
     });
   })
   .catch(console.log);
+
+ipcMain.handle('open-file-dialog', () =>
+  dialog.showOpenDialog({
+    filters: [{ name: 'Music', extensions: ['mp3', 'wav'] }],
+    properties: ['openFile', 'multiSelections'],
+  })
+);
+
+ipcMain.handle('scrap-html', (_, name: string): Promise<string> => {
+  if (childWindow) {
+    return childWindow
+      .loadURL(`https://tunebat.com/Search?q=${name}`)
+      .then(() => {
+        return childWindow
+          ? childWindow.webContents.executeJavaScript(`
+            function gethtml () {
+              return new Promise((resolve, reject) => {
+                resolve(document.documentElement.innerHTML);
+              });
+            }
+            gethtml();
+          `)
+          : '';
+      });
+  }
+  return new Promise((resolve) => resolve(''));
+});
+
+ipcMain.handle(
+  'rename-file',
+  (_, oldPath: string, newPath: string): Promise<void> =>
+    fsPromise.rename(oldPath, newPath)
+);
