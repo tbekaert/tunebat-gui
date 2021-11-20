@@ -3,7 +3,7 @@
 ## ToDo
 
 - [x] MVP
-- [ ] Add query edit
+- [x] Add query edit
 - [ ] Add filename format setting
 - [ ] Add output setting
 - [ ] Add cloudflare blocker

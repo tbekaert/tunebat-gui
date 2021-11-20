@@ -2,13 +2,19 @@ import React from 'react';
 
 import { ipcRenderer } from 'electron';
 
+import ContentEditable from 'react-contenteditable';
+
 import { File, Suggestion, ApiSuggestionSchema } from '../types';
+import useDebounce from '../hooks/useDebounce';
 
 const Queue: React.FunctionComponent = () => {
   const [queue, setQueue] = React.useState<File[]>([]);
   const [suggestions, setSuggestions] = React.useState<Suggestion[]>([]);
 
   const currentFile = React.useMemo(() => queue[0] ?? false, [queue]);
+  const [query, setQuery] = React.useState('');
+  const debouncedQuery = useDebounce(query, 500);
+  const queryRef = React.createRef<HTMLDivElement>();
 
   const [status, setStatus] = React.useState<'loading' | 'idle' | 'error'>(
     'loading'
@@ -51,10 +57,10 @@ const Queue: React.FunctionComponent = () => {
     }
   };
 
-  const loadSuggestions = (file: File) => {
+  const loadSuggestions = (searchQuery: string) => {
     setStatus('loading');
 
-    (ipcRenderer.invoke('scrap-html', file.name) as Promise<string>)
+    (ipcRenderer.invoke('scrap-html', searchQuery) as Promise<string>)
       .then((html) => {
         // console.log(html);
         const json =
@@ -98,7 +104,6 @@ const Queue: React.FunctionComponent = () => {
 
   const renameFile = (suggestion: Suggestion) => () => {
     if (currentFile) {
-      console.log(currentFile, suggestion);
       const newName = [
         suggestion.camelot.padStart(3, '0'),
         '|',
@@ -127,11 +132,17 @@ const Queue: React.FunctionComponent = () => {
 
   React.useEffect(() => {
     if (currentFile) {
-      loadSuggestions(currentFile);
+      setQuery(currentFile.name);
+    }
+  }, [currentFile]);
+
+  React.useEffect(() => {
+    if (debouncedQuery) {
+      loadSuggestions(debouncedQuery);
     } else {
       setStatus('loading');
     }
-  }, [currentFile]);
+  }, [debouncedQuery]);
 
   if (!currentFile) {
     return (
@@ -150,10 +161,22 @@ const Queue: React.FunctionComponent = () => {
   return (
     <div className="w-screen h-screen flex flex-col justify-between items-center">
       <div className="w-screen p-5 bg-gray-800 flex flex-none justify-between items-center">
-        <h2 className="text-xl text-white">
-          <span className="text-gray-500">File:</span> {currentFile.name}.
-          {currentFile.extension}
-        </h2>
+        <div className="flex flex-col">
+          <h2 className="text-xl text-white">
+            <span className="text-gray-500">File:</span> {currentFile.name}.
+            {currentFile.extension}
+          </h2>
+          <h2 className="flex text-xl text-white">
+            <div className="text-gray-500 mr-1">Query:</div>
+            <ContentEditable
+              innerRef={queryRef}
+              html={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+              }}
+            />
+          </h2>
+        </div>
         <button
           type="button"
           onClick={removeFile}
@@ -197,7 +220,7 @@ const Queue: React.FunctionComponent = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        loadSuggestions(currentFile);
+                        loadSuggestions(query);
                       }}
                       className="rounded px-2 py-1 text-xs rounded px-1 border-2 border-red-700 bg-transparent hover:bg-red-700 text-red-700 hover:text-white transition-colors"
                     >
