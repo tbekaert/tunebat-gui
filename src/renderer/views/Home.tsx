@@ -69,7 +69,7 @@ const Queue: React.FunctionComponent = () => {
 
         const result = ApiSuggestionSchema.safeParse(apiResults);
 
-        if (!result.success) {
+        if (result.success === false) {
           console.error(result.error);
           setStatus('error');
         } else {
