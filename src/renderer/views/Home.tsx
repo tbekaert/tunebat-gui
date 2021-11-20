@@ -57,15 +57,13 @@ const Queue: React.FunctionComponent = () => {
     (ipcRenderer.invoke('scrap-html', file.name) as Promise<string>)
       .then((html) => {
         // console.log(html);
+        const json =
+          html
+            .match(/\{"serverModelJSONstring":"(?<json>.*)","redux/)
+            ?.groups?.json?.replace(/\\u0022/g, '"')
+            ?.replace(/\\\\"/g, '\\"') ?? '';
 
-        const apiResults =
-          JSON.parse(
-            html
-              .match(/\{"serverModelJSONstring":"(?<json>.*)","redux/)
-              ?.groups?.json?.replace(/\\u0022/g, '"') ?? ''
-          )?.searchResult?.items ?? [];
-
-        console.log(apiResults);
+        const apiResults = JSON.parse(json)?.searchResult?.items ?? [];
 
         const result = ApiSuggestionSchema.safeParse(apiResults);
 
