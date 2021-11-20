@@ -2,10 +2,11 @@
 
 ## ToDo
 
-[ ] MVP
-[ ] Add filename format setting
-[ ] Add output setting
-[ ] Add cloudflare blocker
+- [x] MVP
+- [ ] Add query edit
+- [ ] Add filename format setting
+- [ ] Add output setting
+- [ ] Add cloudflare blocker
 
 ## Credit
 
